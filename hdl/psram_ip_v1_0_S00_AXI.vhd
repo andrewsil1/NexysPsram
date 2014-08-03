@@ -450,17 +450,17 @@ begin -- Main Module Code
 	      axi_araddr <= (others => '0');
 	      axi_arlen_cntr <= (others => '0');
 	      axi_arlen <= (others => '0');
-	      axi_rlast <= '0';
+--	      axi_rlast <= '0';
 	    else
 	      if (axi_arready = '0' and S_AXI_ARVALID = '1' and axi_arv_arr_flag = '0') then
 	        -- address latching 
 	        axi_araddr <= S_AXI_ARADDR(C_S_AXI_ADDR_WIDTH - 1 downto 0); ---- start address of transfer
 	        axi_arlen_cntr <= (others => '0');
 	        axi_arlen <= S_AXI_ARLEN;
-	        axi_rlast <= '0';
+--	        axi_rlast <= '0';
 	      elsif((axi_arlen_cntr <= axi_arlen) and axi_rvalid = '1' and S_AXI_RREADY = '1') then     
 	        axi_arlen_cntr <= axi_arlen_cntr + '1';
-	        axi_rlast <= '0';      
+--	        axi_rlast <= '0';      
 	     
 	        case (S_AXI_ARBURST) is
 	          when "00" =>  -- fixed burst
@@ -482,10 +482,10 @@ begin -- Main Module Code
 	            axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) + '1';--for arsize = 4 bytes (010)
 			  axi_araddr(ADDR_LSB-1 downto 0)  <= (others => '0');
 	        end case;         
-	      elsif((axi_arlen_cntr = axi_arlen) and axi_rlast = '0' and axi_arv_arr_flag = '1') then  
-	        axi_rlast <= '1';
-	      elsif (S_AXI_RREADY = '1') then  
-	        axi_rlast <= '0';
+--	      elsif((axi_arlen_cntr = axi_arlen) and axi_rlast = '0' and axi_arv_arr_flag = '1') then  
+--	        axi_rlast <= '1';
+--	      elsif (S_AXI_RREADY = '1') then  
+--	        axi_rlast <= '0';
 	      end if;
 	    end if;
 	  end if;
@@ -535,6 +535,7 @@ begin -- Main Module Code
           state <= ST_IDLE;
           axi_wready <= '0';
           axi_rvalid <= '0';
+          axi_rlast <= '0';
           go <= '0';
           mem_data_wr <= x"0000";
           mem_addr <= (others => '0');
@@ -545,6 +546,7 @@ begin -- Main Module Code
         state <= next_state;
         axi_wready <= '0';
         axi_rvalid <= '0';
+        axi_rlast <= '0';
         axi_rdata <= axi_rdata;
         if mem_wren = '1' and S_AXI_WSTRB(1 downto 0) > "00" then -- Go to one of the write states.
             mem_data_wr <= S_AXI_WDATA(15 downto 0);    -- Data for low word
@@ -641,9 +643,15 @@ begin -- Main Module Code
             mem_data_wr <= (others => '0');
             command <= command;
             mem_addr <= mem_addr;
+            if (axi_arlen_cntr = axi_arlen) then
+                axi_rlast <= '1';
+            else
+                axi_rlast <= '0';
+            end if;
          else
             axi_rdata <= axi_rdata;
             axi_rvalid <= '0';
+            axi_rlast <= '0';
             mem_data_wr <= (others => '0');
             command <= command;
             mem_addr <= mem_addr;
@@ -652,6 +660,7 @@ begin -- Main Module Code
             state <= ST_IDLE;
             axi_wready <= '0';
             axi_rvalid <= '0';
+            axi_rlast <= '0';
             go <= '0';
             axi_rdata <= (others => '0');
             mem_data_wr <= (others => '0');
