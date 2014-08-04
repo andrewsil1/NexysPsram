@@ -3,7 +3,7 @@ This project contains the source code for an AXI4-compatible PSRAM controller, a
 I decided to create this project after doing some experimentation with Vivado's built-in "AXI EMC" IP.  The EMC supports the PSRAM in
 asynchronous mode, but it's somewhat difficult to use it to program the PSRAM into page mode, and once it is, it's not particularly well
 optimized for that configuration, and some redundant reads are seen which waste cycles.  So I decided to create my own from scratch, which
-is represented here and was an excellent learning experience to become familiar with the semantics of the AXI4 bus.
+is represented here, and was an excellent learning experience to become familiar with the semantics of the AXI4 bus.
 
 The core could probably be optimized to squeeze out a few more cycles of overhead here and there between consecutive operations, but it's
 been validated to run in a relatively reliable and stable fashion as it stands here.  I hope you find good use for it and makes your Nexys4
@@ -24,10 +24,11 @@ Features:
   revision of the PSRAM logic to comply with the asynchronous timing requirements.
 - Unaligned and/or narrow reads (e.g. 16 bit or 8 bit memory access) are somewhat optimized to avoid unnecessary memory operations
   accessing the not-requested half of the 32 bit DWORD when possible.
-- Supports basic FIXED, INCR, and WRAP bus transactions.  Can be connected to Microblaze DC or IC cache interfaces for further performance enhancement.
+- Supports typical FIXED, INCR, and WRAP bus transactions.  Can be connected to Microblaze DC or IC cache interfaces for further performance enhancement.
 - Validated to successfully pass all automatically generated Xilinx SDK memory tests with Microblaze caching of this memory region enabled and disabled.
   Some revisions to the sample's internal control logic were necessary because transactions to PSRAM do not complete in a single cycle as they 
   do with block RAM.
+- Revised 8/3/2014: Further validated with Xilinx AXI Protocol Checker and fixed an issue with RLAST generation.
 
 Restrictions:
 - Compatible with AXI4 implementations where the AXI clock is 100Mhz and 32-bits wide.  Changing to a different AXI clock speed would require
