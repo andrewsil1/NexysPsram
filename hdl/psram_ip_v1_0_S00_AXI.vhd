@@ -524,7 +524,7 @@ begin -- Main Module Code
 	               (others => '0');
 	 
 	-- implement PSRAM access wr/rd enable flags based on AXI signals
-	  mem_wren <= '1' when (axi_wready = '0' and S_AXI_WVALID = '1' and axi_awv_awr_flag = '1') else '0';
+	  mem_wren <= '1' when (axi_wready = '0' and S_AXI_WVALID = '1' and axi_awv_awr_flag = '1' and axi_arv_arr_flag = '0') else '0'; --Added case to give read priority over write if both occur simultaneously
 	  mem_rden <= axi_arv_arr_flag;	
 
    --State-Machine

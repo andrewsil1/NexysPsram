@@ -10,6 +10,12 @@ been validated to run in a relatively reliable and stable fashion as it stands h
 projects simpler.
 -- Andy Silverman, 7/31/2014
 
+Revision List:
+9/2/2014: Fixed a bug that could cause memory data corruption if a read and a write transaction were initiated in exactly the same 
+          bus cycle. This was discovered when using the core in conjunction with the Xilinx System Cache IP rather than connecting
+          it directly to the Microblaze DC and/or IC AXI buses.
+8/3/2014: Further validated with Xilinx AXI Protocol Checker and fixed an issue with RLAST generation.
+
 Features:
 - Created from the Xilinx Vivado 2014.2 AXI IP creation sample, and derived from their original block RAM implementation.
 - The block RAM instantiation is replaced with original logic to call a new module of my own design to control the 16MB Micron PSRAM.
@@ -28,7 +34,6 @@ Features:
 - Validated to successfully pass all automatically generated Xilinx SDK memory tests with Microblaze caching of this memory region enabled and disabled.
   Some revisions to the sample's internal control logic were necessary because transactions to PSRAM do not complete in a single cycle as they 
   do with block RAM.
-- Revised 8/3/2014: Further validated with Xilinx AXI Protocol Checker and fixed an issue with RLAST generation.
 
 Restrictions:
 - Compatible with AXI4 implementations where the AXI clock is 100Mhz and 32-bits wide.  Changing to a different AXI clock speed would require
