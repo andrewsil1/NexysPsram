@@ -3,7 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 
-entity psram_ip_v1_0 is
+entity psram_ip_v1_1 is
 	generic (
 		-- Users to add parameters here
 
@@ -86,14 +86,14 @@ entity psram_ip_v1_0 is
 		s00_axi_rvalid	: out std_logic;
 		s00_axi_rready	: in std_logic
 	);
-end psram_ip_v1_0;
+end psram_ip_v1_1;
 
-architecture arch_imp of psram_ip_v1_0 is
+architecture arch_imp of psram_ip_v1_1 is
 
     signal ben : std_logic_vector(1 downto 0);
 
 	-- component declaration
-	component psram_ip_v1_0_S00_AXI is
+	component psram_ip_v1_1_S00_AXI is
 		generic (
 		C_S_AXI_ID_WIDTH	: integer	:= 1;
 		C_S_AXI_DATA_WIDTH	: integer	:= 32;
@@ -163,12 +163,12 @@ architecture arch_imp of psram_ip_v1_0 is
         MEM_DATA_O      : out STD_LOGIC_VECTOR(15 downto 0);-- To PSRAM data bus
         MEM_DATA_T      : out STD_LOGIC_VECTOR(15 downto 0) -- To PSRAM data bus
 		);
-	end component psram_ip_v1_0_S00_AXI;
+	end component psram_ip_v1_1_S00_AXI;
 
 begin
 
 -- Instantiation of Axi Bus Interface S00_AXI
-psram_ip_v1_0_S00_AXI_inst : psram_ip_v1_0_S00_AXI
+psram_ip_v1_1_S00_AXI_inst : psram_ip_v1_1_S00_AXI
 	generic map (
 		C_S_AXI_ID_WIDTH	=> C_S00_AXI_ID_WIDTH,
 		C_S_AXI_DATA_WIDTH	=> C_S00_AXI_DATA_WIDTH,

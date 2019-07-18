@@ -1,9 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
-use ieee.std_logic_unsigned.all;
+use ieee.numeric_std.all;
 
-entity psram_ip_v1_0_S00_AXI is
+entity psram_ip_v1_1_S00_AXI is
 	generic (
 		-- Users to add parameters here
 
@@ -177,9 +176,9 @@ entity psram_ip_v1_0_S00_AXI is
         MEM_DATA_O      : out STD_LOGIC_VECTOR(15 downto 0);-- To PSRAM data bus
         MEM_DATA_T      : out STD_LOGIC_VECTOR(15 downto 0)-- To PSRAM data bus
 	);
-end psram_ip_v1_0_S00_AXI;
+end psram_ip_v1_1_S00_AXI;
 
-architecture arch_imp of psram_ip_v1_0_S00_AXI is
+architecture arch_imp of psram_ip_v1_1_S00_AXI is
 
     component AsyncPSRAM is -- Import PSRAM controller module signals
         port(
@@ -238,16 +237,18 @@ architecture arch_imp of psram_ip_v1_0_S00_AXI is
 	signal axi_arv_arr_flag    : std_logic;
 	-- The axi_awlen_cntr internal write address counter to keep track of beats in a burst transaction
 	signal axi_awlen_cntr      : std_logic_vector(7 downto 0);
-	signal axi_awlen           : std_logic_vector(7 downto 0); --ANDREWSI added.
 	--The axi_arlen_cntr internal read address counter to keep track of beats in a burst transaction
 	signal axi_arlen_cntr      : std_logic_vector(7 downto 0);
-	signal axi_arlen           : std_logic_vector(7 downto 0); --ANDREWSI added.
+	signal axi_arburst      : std_logic_vector(2-1 downto 0);
+	signal axi_awburst      : std_logic_vector(2-1 downto 0);
+	signal axi_arlen      : std_logic_vector(8-1 downto 0);
+	signal axi_awlen      : std_logic_vector(8-1 downto 0);
 	--local parameter for addressing 32 bit / 64 bit C_S_AXI_DATA_WIDTH
 	--ADDR_LSB is used for addressing 32/64 bit registers/memories
 	--ADDR_LSB = 2 for 32 bits (n downto 2) 
 	--ADDR_LSB = 3 for 64 bits (n downto 3)
 	constant ADDR_LSB  : integer := (C_S_AXI_DATA_WIDTH/32)+ 1;
-	constant OPT_MEM_ADDR_BITS : integer := 7;
+	constant OPT_MEM_ADDR_BITS : integer := 23 - 1;
 	constant low : std_logic_vector (C_S_AXI_ADDR_WIDTH - 1 downto 0) := (others => '0');
 	
 	------------------------------------------------
@@ -261,7 +262,7 @@ architecture arch_imp of psram_ip_v1_0_S00_AXI is
 	------------------------------------------------
 	---- Signals for user logic memory space example
 	--------------------------------------------------
-	signal mem_address : std_logic_vector(22 downto 0);
+	signal mem_address : std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
 	signal mem_rden : std_logic;
     signal mem_wren : std_logic;
     
@@ -296,24 +297,24 @@ begin -- Main Module Code
         ); 
 	
 	-- I/O Connections assignments
-	S_AXI_AWREADY <= axi_awready;
-	S_AXI_WREADY <= axi_wready;
+
+	S_AXI_AWREADY	<= axi_awready;
+	S_AXI_WREADY	<= axi_wready;
 	S_AXI_BRESP	<= axi_bresp;
 	S_AXI_BUSER	<= axi_buser;
-	S_AXI_BVALID <= axi_bvalid;
-	S_AXI_ARREADY <= axi_arready;
+	S_AXI_BVALID	<= axi_bvalid;
+	S_AXI_ARREADY	<= axi_arready;
 	S_AXI_RDATA	<= axi_rdata;
 	S_AXI_RRESP	<= axi_rresp;
 	S_AXI_RLAST	<= axi_rlast;
 	S_AXI_RUSER	<= axi_ruser;
-	S_AXI_RVALID <= axi_rvalid;
+	S_AXI_RVALID	<= axi_rvalid;
 	S_AXI_BID <= S_AXI_AWID;
 	S_AXI_RID <= S_AXI_ARID;
-	aw_wrap_size <= (C_S_AXI_DATA_WIDTH/8 * CONV_INTEGER(S_AXI_AWLEN)); 
-	ar_wrap_size <= (C_S_AXI_DATA_WIDTH/8 * CONV_INTEGER(S_AXI_ARLEN)); 
-	aw_wrap_en <= '1' when (((axi_awaddr AND CONV_STD_LOGIC_VECTOR(aw_wrap_size,C_S_AXI_ADDR_WIDTH)) XOR CONV_STD_LOGIC_VECTOR(aw_wrap_size,C_S_AXI_ADDR_WIDTH)) = low) else '0';
-	ar_wrap_en <= '1' when (((axi_araddr AND CONV_STD_LOGIC_VECTOR(ar_wrap_size,C_S_AXI_ADDR_WIDTH)) XOR CONV_STD_LOGIC_VECTOR(ar_wrap_size,C_S_AXI_ADDR_WIDTH)) = low) else '0';
-	S_AXI_BUSER <= (others => '0');
+	aw_wrap_size <= ((C_S_AXI_DATA_WIDTH)/8 * to_integer(unsigned(axi_awlen))); 
+	ar_wrap_size <= ((C_S_AXI_DATA_WIDTH)/8 * to_integer(unsigned(axi_arlen))); 
+	aw_wrap_en <= '1' when (((axi_awaddr AND std_logic_vector(to_unsigned(aw_wrap_size,C_S_AXI_ADDR_WIDTH))) XOR std_logic_vector(to_unsigned(aw_wrap_size,C_S_AXI_ADDR_WIDTH))) = low) else '0';
+	ar_wrap_en <= '1' when (((axi_araddr AND std_logic_vector(to_unsigned(ar_wrap_size,C_S_AXI_ADDR_WIDTH))) XOR std_logic_vector(to_unsigned(ar_wrap_size,C_S_AXI_ADDR_WIDTH))) = low) else '0';
 
 	-- Implement axi_awready generation
 
@@ -352,35 +353,37 @@ begin -- Main Module Code
 	  if rising_edge(S_AXI_ACLK) then 
 	    if S_AXI_ARESETN = '0' then
 	      axi_awaddr <= (others => '0');
+	      axi_awburst <= (others => '0'); 
+	      axi_awlen <= (others => '0'); 
 	      axi_awlen_cntr <= (others => '0');
-	      axi_awlen <= (others => '0');
 	    else
 	      if (axi_awready = '0' and S_AXI_AWVALID = '1' and axi_awv_awr_flag = '0') then
 	      -- address latching 
 	        axi_awaddr <= S_AXI_AWADDR(C_S_AXI_ADDR_WIDTH - 1 downto 0);  ---- start address of transfer
 	        axi_awlen_cntr <= (others => '0');
+	        axi_awburst <= S_AXI_AWBURST;
 	        axi_awlen <= S_AXI_AWLEN;
 	      elsif((axi_awlen_cntr <= axi_awlen) and axi_wready = '1' and S_AXI_WVALID = '1') then     
-	        axi_awlen_cntr <= axi_awlen_cntr + '1';
+	        axi_awlen_cntr <= std_logic_vector (unsigned(axi_awlen_cntr) + 1);
 
-	        case (S_AXI_AWBURST) is
+	        case (axi_awburst) is
 	          when "00" => -- fixed burst
 	            -- The write address for all the beats in the transaction are fixed
 	            axi_awaddr     <= axi_awaddr;       ----for awsize = 4 bytes (010)
 	          when "01" => --incremental burst
 	            -- The write address for all the beats in the transaction are increments by awsize
-	            axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) + '1';--awaddr aligned to 4 byte boundary
+	            axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= std_logic_vector (unsigned(axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB)) + 1);--awaddr aligned to 4 byte boundary
 	            axi_awaddr(ADDR_LSB-1 downto 0)  <= (others => '0');  ----for awsize = 4 bytes (010)
 	          when "10" => --Wrapping burst
 	            -- The write address wraps when the address reaches wrap boundary 
 	            if (aw_wrap_en = '1') then
-	              axi_awaddr <= axi_awaddr - CONV_STD_LOGIC_VECTOR(aw_wrap_size,C_S_AXI_ADDR_WIDTH);                
+	              axi_awaddr <= std_logic_vector (unsigned(axi_awaddr) - (to_unsigned(aw_wrap_size,C_S_AXI_ADDR_WIDTH)));                
 	            else 
-	              axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) + '1';--awaddr aligned to 4 byte boundary
+	              axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= std_logic_vector (unsigned(axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB)) + 1);--awaddr aligned to 4 byte boundary
 	              axi_awaddr(ADDR_LSB-1 downto 0)  <= (others => '0');  ----for awsize = 4 bytes (010)
 	            end if;
 	          when others => --reserved (incremental burst for example)
-	            axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) + '1';--for awsize = 4 bytes (010)
+	            axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= std_logic_vector (unsigned(axi_awaddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB)) + 1);--for awsize = 4 bytes (010)
 	            axi_awaddr(ADDR_LSB-1 downto 0)  <= (others => '0');
 	        end case;        
 	      end if;
@@ -388,6 +391,28 @@ begin -- Main Module Code
 	  end if;
 	end process;
 
+	-- Implement axi_wready generation
+
+	-- axi_wready is asserted for one S_AXI_ACLK clock cycle when both
+	-- S_AXI_AWVALID and S_AXI_WVALID are asserted. axi_wready is 
+	-- de-asserted when reset is low. 
+
+--	process (S_AXI_ACLK)
+--	begin
+--	  if rising_edge(S_AXI_ACLK) then 
+--	    if S_AXI_ARESETN = '0' then
+--	      axi_wready <= '0';
+--	    else
+--	      if (axi_wready = '0' and S_AXI_WVALID = '1' and axi_awv_awr_flag = '1') then
+--	        axi_wready <= '1';
+--	        -- elsif (axi_awv_awr_flag = '0') then
+--	      elsif (S_AXI_WLAST = '1' and axi_wready = '1') then 
+--
+--	        axi_wready <= '0';
+--	      end if;
+--	    end if;
+--	  end if;         
+--	end process; 
 	-- Implement write response logic generation
 
 	-- The write response and response valid signals are asserted by the slave 
@@ -401,6 +426,7 @@ begin -- Main Module Code
 	    if S_AXI_ARESETN = '0' then
 	      axi_bvalid  <= '0';
 	      axi_bresp  <= "00"; --need to work more on the responses
+	      axi_buser <= (others => '0');
 	    else
 	      if (axi_awv_awr_flag = '1' and axi_wready = '1' and S_AXI_WVALID = '1' and axi_bvalid = '0' and S_AXI_WLAST = '1' ) then
 	        axi_bvalid <= '1';
@@ -448,38 +474,41 @@ begin -- Main Module Code
 	  if rising_edge(S_AXI_ACLK) then 
 	    if S_AXI_ARESETN = '0' then
 	      axi_araddr <= (others => '0');
+	      axi_arburst <= (others => '0');
+	      axi_arlen <= (others => '0'); 
 	      axi_arlen_cntr <= (others => '0');
-	      axi_arlen <= (others => '0');
 --	      axi_rlast <= '0';
+	      axi_ruser <= (others => '0');
 	    else
 	      if (axi_arready = '0' and S_AXI_ARVALID = '1' and axi_arv_arr_flag = '0') then
 	        -- address latching 
 	        axi_araddr <= S_AXI_ARADDR(C_S_AXI_ADDR_WIDTH - 1 downto 0); ---- start address of transfer
 	        axi_arlen_cntr <= (others => '0');
-	        axi_arlen <= S_AXI_ARLEN;
 --	        axi_rlast <= '0';
+	        axi_arburst <= S_AXI_ARBURST;
+	        axi_arlen <= S_AXI_ARLEN;
 	      elsif((axi_arlen_cntr <= axi_arlen) and axi_rvalid = '1' and S_AXI_RREADY = '1') then     
-	        axi_arlen_cntr <= axi_arlen_cntr + '1';
+	        axi_arlen_cntr <= std_logic_vector (unsigned(axi_arlen_cntr) + 1);
 --	        axi_rlast <= '0';      
 	     
-	        case (S_AXI_ARBURST) is
+	        case (axi_arburst) is
 	          when "00" =>  -- fixed burst
 	            -- The read address for all the beats in the transaction are fixed
 	            axi_araddr     <= axi_araddr;      ----for arsize = 4 bytes (010)
 	          when "01" =>  --incremental burst
 	            -- The read address for all the beats in the transaction are increments by awsize
-	            axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) + '1'; --araddr aligned to 4 byte boundary
+	            axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= std_logic_vector (unsigned(axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB)) + 1); --araddr aligned to 4 byte boundary
 	            axi_araddr(ADDR_LSB-1 downto 0)  <= (others => '0');  ----for awsize = 4 bytes (010)
 	          when "10" =>  --Wrapping burst
 	            -- The read address wraps when the address reaches wrap boundary 
 	            if (ar_wrap_en = '1') then   
-	              axi_araddr <= axi_araddr - CONV_STD_LOGIC_VECTOR(ar_wrap_size,C_S_AXI_ADDR_WIDTH);
+	              axi_araddr <= std_logic_vector (unsigned(axi_araddr) - (to_unsigned(ar_wrap_size,C_S_AXI_ADDR_WIDTH)));
 	            else 
-	              axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) + '1'; --araddr aligned to 4 byte boundary
+	              axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= std_logic_vector (unsigned(axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB)) + 1); --araddr aligned to 4 byte boundary
 	              axi_araddr(ADDR_LSB-1 downto 0)  <= (others => '0');  ----for awsize = 4 bytes (010)
 	            end if;
 	          when others => --reserved (incremental burst for example)
-	            axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) + '1';--for arsize = 4 bytes (010)
+	            axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB) <= std_logic_vector (unsigned(axi_araddr(C_S_AXI_ADDR_WIDTH - 1 downto ADDR_LSB)) + 1);--for arsize = 4 bytes (010)
 			  axi_araddr(ADDR_LSB-1 downto 0)  <= (others => '0');
 	        end case;         
 --	      elsif((axi_arlen_cntr = axi_arlen) and axi_rlast = '0' and axi_arv_arr_flag = '1') then  
@@ -504,10 +533,14 @@ begin -- Main Module Code
 	begin
 	  if rising_edge(S_AXI_ACLK) then
 	    if S_AXI_ARESETN = '0' then
+--	      axi_rvalid <= '0';
 	      axi_rresp  <= "00";
 	    else
 	      if (axi_arv_arr_flag = '1' and axi_rvalid = '0') then
+--	        axi_rvalid <= '1';
 	        axi_rresp  <= "00"; -- 'OKAY' response
+--	      elsif (axi_rvalid = '1' and S_AXI_RREADY = '1') then
+--	        axi_rvalid <= '0';
 	      end  if;      
 	    end if;
 	  end if;
@@ -556,7 +589,7 @@ begin -- Main Module Code
             go <= '1';
         elsif mem_wren = '1' and S_AXI_WSTRB(1 downto 0) = "00" then -- In this case the master says not to worry about the lower word, so we can skip it to speed things up.
             mem_data_wr <= S_AXI_WDATA(31 downto 16);    -- Data for high word
-            mem_addr <= mem_address + '1';               -- Address of next 16-bit memory location
+            mem_addr <= std_logic_vector(unsigned(mem_address) + 1);               -- Address of next 16-bit memory location
             mem_byte_en <= not S_AXI_WSTRB(3 downto 2);   -- Pass on byte write strobes (inverted)
             command <= '0';
             go <= '1';
@@ -564,7 +597,7 @@ begin -- Main Module Code
             if axi_araddr(1) = '0' then 
                mem_addr <= mem_address;                    
             else -- If bit 1 of the address is high, this is an unaligned read (reading bytes 2 and/or 3), so we don't need to read the low word at all.
-               mem_addr <= mem_address + '1';
+               mem_addr <= std_logic_vector(unsigned(mem_address) + 1);
             end if;            
             mem_data_wr <= (others => '0');
             mem_byte_en <= "00";
@@ -585,7 +618,7 @@ begin -- Main Module Code
             if S_AXI_WSTRB(3 downto 2) > "00" then
                 axi_wready <= '0';                            -- Not done writing yet.
                 mem_data_wr <= S_AXI_WDATA(31 downto 16);     -- Data for high word
-                mem_addr <= mem_addr + '1';                   -- Address of next 16-bit memory location
+                mem_addr <= std_logic_vector(unsigned(mem_addr) + 1);                   -- Address of next 16-bit memory location
                 mem_byte_en <= not S_AXI_WSTRB(3 downto 2);   -- Pass on byte write strobes (inverted)
                 command <= '0';
                 go <= '1';
@@ -621,7 +654,7 @@ begin -- Main Module Code
         axi_wready <= '0';
         if mem_idle = '1' then
             axi_rdata(15 downto 0) <= mem_data_rd;
-            mem_addr <= mem_addr + '1';
+            mem_addr <= std_logic_vector(unsigned(mem_addr) + 1);
             command <= '1';
             go <= '1';
             mem_data_wr <= (others => '0');

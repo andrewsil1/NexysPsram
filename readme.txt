@@ -11,10 +11,13 @@ projects simpler.
 -- Andy Silverman, 7/31/2014
 
 Revision List:
-9/2/2014: Fixed a bug that could cause memory data corruption if a read and a write transaction were initiated in exactly the same 
-          bus cycle. This was discovered when using the core in conjunction with the Xilinx System Cache IP rather than connecting
-          it directly to the Microblaze DC and/or IC AXI buses.
-8/3/2014: Further validated with Xilinx AXI Protocol Checker and fixed an issue with RLAST generation.
+7/17/2019: Was having trouble with System Cache again in Vivado 2019.1 (probably earlier as well), so recreated the AXI interface module
+           using the latest AXI memory master sample IP in Vivado and the cache errors appear to have stopped. I didn't change any core
+	   logic, but the latest VHDL uses the numeric std library instead of a different flavor, so perhaps there was some subtle difference.
+9/2/2014:  Fixed a bug that could cause memory data corruption if a read and a write transaction were initiated in exactly the same 
+           bus cycle. This was discovered when using the core in conjunction with the Xilinx System Cache IP rather than connecting
+           it directly to the Microblaze DC and/or IC AXI buses.
+8/3/2014:  Further validated with Xilinx AXI Protocol Checker and fixed an issue with RLAST generation.
 
 Features:
 - Created from the Xilinx Vivado 2014.2 AXI IP creation sample, and derived from their original block RAM implementation.
