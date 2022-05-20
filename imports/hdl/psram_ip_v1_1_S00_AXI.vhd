@@ -309,13 +309,26 @@ begin -- Main Module Code
 	S_AXI_RLAST	<= axi_rlast;
 	S_AXI_RUSER	<= axi_ruser;
 	S_AXI_RVALID	<= axi_rvalid;
-	S_AXI_BID <= S_AXI_AWID;
-	S_AXI_RID <= S_AXI_ARID;
 	aw_wrap_size <= ((C_S_AXI_DATA_WIDTH)/8 * to_integer(unsigned(axi_awlen))); 
 	ar_wrap_size <= ((C_S_AXI_DATA_WIDTH)/8 * to_integer(unsigned(axi_arlen))); 
 	aw_wrap_en <= '1' when (((axi_awaddr AND std_logic_vector(to_unsigned(aw_wrap_size,C_S_AXI_ADDR_WIDTH))) XOR std_logic_vector(to_unsigned(aw_wrap_size,C_S_AXI_ADDR_WIDTH))) = low) else '0';
 	ar_wrap_en <= '1' when (((axi_araddr AND std_logic_vector(to_unsigned(ar_wrap_size,C_S_AXI_ADDR_WIDTH))) XOR std_logic_vector(to_unsigned(ar_wrap_size,C_S_AXI_ADDR_WIDTH))) = low) else '0';
 
+	--axi id latching fix per issue #1 - thanks to jeanricard2000
+	--must latch S_AXI_BID and S_AXI_RID to guard against one of these changing after a transition is ack'd but has not yet been completed.
+	process (S_AXI_ACLK)
+	begin
+  		if rising_edge(S_AXI_ACLK) then 
+      			if (axi_awready = '1' and S_AXI_AWVALID = '1') then
+				S_AXI_BID <= S_AXI_AWID;
+      			end if;
+	  
+      			if (axi_arready = '1') then
+				S_AXI_RID <= S_AXI_ARID;
+      			end if;
+  		end if;         
+	end process; 	
+		
 	-- Implement axi_awready generation
 
 	-- axi_awready is asserted for one S_AXI_ACLK clock cycle when both
